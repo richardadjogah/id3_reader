@@ -249,7 +249,7 @@ var processTags = function(content) {
 
 }
 
-var updateTags = function(content, new_tags) {
+var updateTags = function(new_tags) {
 
   // add in the tags that are already in the file
   var temp_size = 0;
@@ -272,9 +272,11 @@ var updateTags = function(content, new_tags) {
   //create new buffer to hold our new tags
   var temp_buffer = new Buffer(temp_size + 10);
   temp_buffer.fill('');
+  var default_header = '\u0049\u0044\u0033\u0004\u0000\u0000\u0000\u0000\u0000\u0000';
+  temp_buffer.write(default_header.toString(), 0, 10);
 
   //copy the old header
-  content.copy(temp_buffer, 0, 0, 10);
+  //content.copy(temp_buffer, 0, 0, 10);
 
   //calculate new tag size, convert to special 28-bit int
   var bit_size = temp_size.toString(2);
@@ -461,6 +463,17 @@ var loadTagDetails = function(file_handle, cb) {
 
 }
 
+// loads the details about the tag size etc
+var calculateTagSize = function(file_handle) {
+    if (file_handle.slice(0, 3).toString() !== 'ID3') {
+      return 0;
+    }
+    else {
+        return id3Size(file_handle.slice(6,10)); 
+    }
+}
+
+
 // load the actual tag data
 var loadTagData = function(file_handle, tag_size, version, cb) {
 
@@ -500,45 +513,23 @@ var overwriteTags = function(file_path, new_tags, callback) {
 
       }
 
+      var full_mp3 = fs.readFileSync(file_path);
+      var tag_size = calculateTagSize(full_mp3);
+
+      var tag_buffer = updateTags(new_tags);
+      
+      var mp3_length = full_mp3.length - tag_size;
+      var mp3_buffer = new Buffer(mp3_length);
+      full_mp3.copy(mp3_buffer, 0, tag_size);
+      fs.unlinkSync(file_path);
+      fs.appendFileSync(file_path, tag_buffer);
+      fs.appendFileSync(file_path, mp3_buffer);
+
       return cb(null, file_handle);
 
     });
 
   });
-
-  functions.push(loadTagDetails);
-
-  functions.push(function(file_handle, tag_size, version, cb) {
-
-    loadTagData(file_handle, tag_size, version, function(err, file_handle, tag_content) {
-
-      if (err !== null) {
-
-        return cb(err);
-
-      }
-
-      var tag_buffer = updateTags(tag_content.tags, new_tags);
-
-      return cb(null, file_handle, tag_size, tag_buffer);
-
-    });
-
-  });
-
-  functions.push(function(file_handle, tag_size, tag_buffer, cb) {
-
-    //new writing algorithm to account for new tags that are larger/smaller
-    var full_mp3 = fs.readFileSync(file_path);
-    var mp3_length = full_mp3.length - tag_size;
-    var mp3_buffer = new Buffer(mp3_length);
-    full_mp3.copy(mp3_buffer, 0, tag_size);
-    fs.unlinkSync(file_path);
-    fs.appendFileSync(file_path, tag_buffer);
-    fs.appendFileSync(file_path, mp3_buffer);
-  });
-
-  functions.push(closeFile);
 
   async.waterfall(functions, function(err, data) {
 
