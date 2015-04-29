@@ -221,7 +221,13 @@ var processTags = function(content) {
     if (_.isUndefined(labels[tag_label]) === false) {
 
       var label = labels[tag_label].toLowerCase().replace(/\s/g, '_');
-      var text = content.slice(pos + 10, pos + 10 + tag_size).toString('UTF-8').replace(/[\u0000-\u0009]|~|�/g, '');
+      if (label == 'attached_picture') {
+        var text = content.slice(pos + 10, pos + 10 + tag_size);
+      }
+      else {
+        var text = content.slice(pos + 10, pos + 10 + tag_size).toString('UTF-8').replace(/[\u0000-\u0009]|~|�/g, '');
+      }
+     
 
       // is this some user defined tag?
       if (label === "user_defined_text_information_frame") {
@@ -258,10 +264,13 @@ var updateTags = function(new_tags) {
   for (var key in new_tags) {
     if (new_tags.hasOwnProperty(key)) {
 
-      //special case for album art
-      //ONLY PNGS ARE SUPPORTED
-      if (key == 'APIC'){
+      //special cases for album art
+      //ONLY PNGS AND JPEGS ARE SUPPORTED
+      if (key == 'APICPNG'){
         temp_size += 13 + 10 + new_tags[key].length;
+      }
+      else if (key == 'APICJPEG'){
+        temp_size += 14 + 10 + new_tags[key].length;
       }
       else {
         temp_size += 11 + new_tags[key].length;
@@ -310,7 +319,19 @@ var updateTags = function(new_tags) {
   for (var key in new_tags) {
 
     //get frame id
+
+    var image_type = '';
+
     var tag_label = key.toString('ascii');
+
+    if (key == 'APICPNG'){
+      tag_label = 'APIC'.toString('ascii');
+      image_type = 'png';
+    }
+    else if (key == 'APICJPEG'){
+      tag_label = 'APIC'.toString('ascii');
+      image_type = 'jpeg';
+    }
 
     if (_.isUndefined(labels[tag_label]) === false) {
 
@@ -321,13 +342,20 @@ var updateTags = function(new_tags) {
       var new_tag = '\u0000' + new_tags[key];  
       var new_tag_size = new_tag.length;     
 
-      //add tags for embedded art. PNG MIME type is hard coded
+      //add tags for embedded art. MIME types are hard coded
       if (tag_label == 'APIC'){
-        var pic_header = '\u0000\u0069\u006D\u0061\u0067\u0065\u002F\u0070\u006E\u0067\u0000\u0003\u0000';
-        temp_buffer.write(pic_header.toString(), pos + 10, pos + 23);
-        new_tag_size = new_tags[key].length + 13;
-        new_tags[key].copy(temp_buffer, pos + 23, 0, new_tag_size);
-        
+        if (image_type == 'png'){
+          var pic_header = '\u0000\u0069\u006D\u0061\u0067\u0065\u002F\u0070\u006E\u0067\u0000\u0003\u0000';
+          temp_buffer.write(pic_header.toString(), pos + 10, pos + 23);
+          new_tag_size = new_tags[key].length + 13;
+          new_tags[key].copy(temp_buffer, pos + 23, 0, new_tag_size);          
+        }
+        else if  (image_type == 'jpeg'){
+          var pic_header = '\u0000\u0069\u006D\u0061\u0067\u0065\u002F\u006A\u0070\u0065\u0067\u0000\u0003\u0000';
+          temp_buffer.write(pic_header.toString(), pos + 10, pos + 24);
+          new_tag_size = new_tags[key].length + 14;
+          new_tags[key].copy(temp_buffer, pos + 24, 0, new_tag_size);       
+        }
       }
       else {
         temp_buffer.write(new_tag.toString(), pos + 10, pos + 10 + new_tag_size);
