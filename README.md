@@ -53,14 +53,14 @@ The output of the above could look something like this:
 
 New tags are identified by their four character frame IDs. These are listed here: http://id3.org/id3v2.3.0#Declared_ID3v2_frames
 
-PNG files can be embedded as album art by passing a buffer containing the file to the "APIC" frame. Support for JPEGs is TBD.
+Album art can be added as either a PNG or JPEG file by passing a buffer to the APICPNG and APICJPEG frames respectively. Other filetypes are currently unsupported. 
 
 ```
 var albumArtPath = "albumart.png";
 var albumArt = fs.readFileSync(albumArtPath);
   
 var tags = { 
-  APIC: albumArt,
+  APICJPEG: albumArt,
   TIT2: 'New tag title',
   TPE1: 'New Artist',
   TALB: 'New album',
