@@ -281,7 +281,7 @@ var updateTags = function(new_tags) {
   //create new buffer to hold our new tags
   var temp_buffer = new Buffer(temp_size + 10);
   temp_buffer.fill('');
-  var default_header = '\u0049\u0044\u0033\u0004\u0000\u0000\u0000\u0000\u0000\u0000';
+  var default_header = '\u0049\u0044\u0033\u0003\u0000\u0000\u0000\u0000\u0000\u0000';
   temp_buffer.write(default_header.toString(), 0, 10);
 
   //copy the old header
